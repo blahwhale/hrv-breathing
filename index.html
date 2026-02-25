@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HRV 呼吸训练</title>
+  <style>
+    /* ── CSS Variables & Reset ── */
+    :root {
+      --bg: #0D1117;
+      --bg-card: #161B22;
+      --bg-card2: #1C2128;
+      --circle-light: #C5D5E8;
+      --circle-dark: #7BA3A8;
+      --accent: #5B8C7A;
+      --accent-light: #6FA898;
+      --text-primary: #D4DCE8;
+      --text-secondary: #8B949E;
+      --text-muted: #6B7280;
+      --border: #21262D;
+      --warning: #D97706;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+    #header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.02em; }
+    .subtitle { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+    #session-selector { display: flex; align-items: center; gap: 10px; }
+    #session-selector label { font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap; }
+    select {
+      background: var(--bg);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+      max-width: 220px;
+    }
+    select:focus { border-color: var(--accent); }
+
+    /* ── Main Layout ── */
+    #main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Left Panel ── */
+    #panel-left {
+      width: 290px;
+      min-width: 290px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── Center Panel ── */
+    #panel-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      padding: 16px;
+    }
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Teaching Card */
+    #session-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent-light);
+      margin-bottom: 8px;
+    }
+    #teaching-content {
+      font-size: 0.8rem;
+      line-height: 1.75;
+      color: var(--text-secondary);
+    }
+    #teaching-content strong { color: var(--accent-light); }
+    #teaching-tips {
+      list-style: none;
+      margin-top: 10px;
+    }
+    #teaching-tips li {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 3px 0 3px 14px;
+      position: relative;
+    }
+    #teaching-tips li::before {
+      content: '·';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    /* Stats */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 0.76rem; color: var(--text-muted); }
+    .stat-value { font-size: 0.88rem; font-weight: 600; color: var(--text-primary); }
+    .stat-value.accent { color: var(--accent-light); }
+
+    /* Heatmap */
+    #heatmap {
+      display: grid;
+      grid-template-rows: repeat(7, 14px);
+      grid-auto-flow: column;
+      grid-auto-columns: 14px;
+      gap: 2px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+    .hm-cell {
+      width: 14px;
+      height: 14px;
+      border-radius: 2px;
+      background: var(--bg-card2);
+      position: relative;
+      cursor: default;
+    }
+    .hm-cell[data-c="1"] { background: #2D5A4A; }
+    .hm-cell[data-c="2"] { background: #3D7A60; }
+    .hm-cell[data-c="3"] { background: var(--accent); }
+    .hm-cell:hover .hm-tip { display: block; }
+    .hm-tip {
+      display: none;
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2D333B;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-size: 0.68rem;
+      white-space: nowrap;
+      z-index: 50;
+      pointer-events: none;
+      color: var(--text-primary);
+    }
+
+    /* ── Breathing Circle ── */
+    #breath-wrap {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    #breath-circle {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, var(--circle-light), var(--circle-dark));
+      transform: scale(0.7);
+      will-change: transform, box-shadow;
+    }
+    #phase-label {
+      position: absolute;
+      font-size: 1.35rem;
+      font-weight: 300;
+      color: #0D1117;
+      letter-spacing: 0.04em;
+      pointer-events: none;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      user-select: none;
+    }
+    #phase-cd {
+      position: absolute;
+      bottom: 24px;
+      font-size: 0.8rem;
+      color: rgba(13,17,23,0.65);
+      font-weight: 500;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Timer */
+    #timer-display {
+      font-size: 2.8rem;
+      font-weight: 200;
+      color: var(--text-primary);
+      letter-spacing: 0.04em;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .progress-bar-wrap {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      width: 180px;
+      margin: 8px auto 0;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 1s linear;
+    }
+    #cycle-count { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+    #rf-display { font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+
+    /* Controls */
+    .controls { display: flex; gap: 10px; align-items: center; }
+    .btn {
+      padding: 9px 22px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 500;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      line-height: 1;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-light); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent-light); }
+
+    /* ── RF Test Panel ── */
+    #rf-test-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 18px;
+      width: 100%;
+      max-width: 500px;
+    }
+    #rf-test-intro { text-align: center; max-width: 420px; }
+    #rf-test-intro h3 { font-size: 1.05rem; color: var(--accent-light); margin-bottom: 8px; }
+    #rf-test-intro p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.65; }
+
+    .rf-dots { display: flex; gap: 8px; }
+    .rf-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--border); transition: background 0.2s;
+    }
+    .rf-dot.active { background: var(--accent); }
+    .rf-dot.done { background: var(--accent); opacity: 0.4; }
+
+    /* RF Test circle (reuses same approach as main) */
+    #rf-test-breath-area {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+    #rf-breath-wrap {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #rf-circle {
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, var(--circle-light), var(--circle-dark));
+      transform: scale(0.7);
+      will-change: transform, box-shadow;
+    }
+    #rf-phase-label {
+      position: absolute;
+      font-size: 1.35rem;
+      font-weight: 300;
+      color: #0D1117;
+      pointer-events: none;
+      user-select: none;
+    }
+    #rf-phase-cd {
+      position: absolute;
+      bottom: 24px;
+      font-size: 0.8rem;
+      color: rgba(13,17,23,0.65);
+      font-weight: 500;
+      pointer-events: none;
+      user-select: none;
+    }
+    #rf-test-timer { font-size: 2rem; font-weight: 200; letter-spacing: 0.05em; }
+    #rf-test-cur { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* Rating */
+    #rating-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 28px;
+      text-align: center;
+    }
+    #rating-panel h3 { font-size: 0.95rem; }
+    #rating-panel p { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.6; }
+    .stars { display: flex; gap: 6px; }
+    .star {
+      font-size: 1.9rem;
+      cursor: pointer;
+      color: var(--border);
+      transition: color 0.12s;
+      user-select: none;
+    }
+    .star.lit { color: #F5A623; }
+
+    /* RF Result */
+    #rf-result-panel {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 28px;
+      text-align: center;
+      width: 100%;
+      max-width: 380px;
+    }
+    #rf-result-panel h3 { font-size: 1rem; color: var(--accent-light); }
+    #rf-result-panel p { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.6; }
+    .rf-opt {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      width: 100%;
+    }
+    .rf-opt:hover { border-color: var(--accent); }
+    .rf-opt.chosen { border-color: var(--accent); background: rgba(91,140,122,0.08); }
+    .rf-opt-label { font-size: 0.84rem; color: var(--text-primary); }
+    .rf-opt-period { font-size: 0.75rem; color: var(--text-muted); }
+    .rf-opt-stars { font-size: 0.78rem; color: #F5A623; margin-left: auto; }
+    .rf-opt-badge {
+      font-size: 0.67rem;
+      background: var(--accent);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    /* ── Warning banner ── */
+    #warning-banner {
+      display: none;
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(217,119,6,0.12);
+      border: 1px solid var(--warning);
+      border-radius: 7px;
+      padding: 8px 18px;
+      font-size: 0.8rem;
+      color: var(--warning);
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    /* ── Complete Overlay ── */
+    #complete-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(13,17,23,0.82);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .complete-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px 40px;
+      text-align: center;
+      max-width: 380px;
+    }
+    .complete-card h2 { font-size: 1.2rem; color: var(--accent-light); margin-bottom: 10px; }
+    .complete-card p { font-size: 0.83rem; color: var(--text-secondary); line-height: 1.65; margin-bottom: 10px; }
+    .complete-card .cstats { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px; }
+
+    /* ── Minimal guide mode ── */
+    .minimal #breath-circle { opacity: 0.15; }
+    .minimal #phase-label,
+    .minimal #phase-cd { opacity: 0; }
+
+    /* ── Footer ── */
+    #footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 24px;
+      background: var(--bg-card);
+      flex-shrink: 0;
+    }
+    #footer .ref-label {
+      font-size: 0.7rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    #footer p {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      line-height: 1.75;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      body { overflow: auto; }
+      #main { flex-direction: column; overflow: visible; }
+      #panel-left { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid var(--border); max-height: 260px; }
+      #panel-center { padding: 20px 12px; }
+      #breath-wrap, #rf-breath-wrap { width: 210px; height: 210px; }
+      #breath-circle, #rf-circle { width: 190px; height: 190px; }
+      #timer-display { font-size: 2.2rem; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div id="header">
+  <div>
+    <h1>HRV 呼吸训练</h1>
+    <div class="subtitle">基于 Lehrer 共振频率协议</div>
+  </div>
+  <div id="session-selector">
+    <label for="session-sel">训练课程</label>
+    <select id="session-sel"></select>
+  </div>
+</div>
+
+<!-- Warning -->
+<div id="warning-banner">⚠️ 如感到头晕或不适，请暂停并恢复正常呼吸</div>
+
+<!-- ── Main ── -->
+<div id="main">
+
+  <!-- Left Panel -->
+  <div id="panel-left">
+    <!-- Teaching -->
+    <div class="card" id="teaching-card">
+      <div class="card-title">本次课程</div>
+      <div id="session-title"></div>
+      <div id="teaching-content"></div>
+      <ul id="teaching-tips"></ul>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">训练统计</div>
+      <div class="stat-row">
+        <span class="stat-label">本周次数</span>
+        <span class="stat-value" id="s-week">0 / 14</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">今日剩余</span>
+        <span class="stat-value accent" id="s-today">2 次</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">累计时长</span>
+        <span class="stat-value" id="s-total">0 分钟</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">当前进度</span>
+        <span class="stat-value" id="s-current">第 1 周 第 1 次</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">共振频率</span>
+        <span class="stat-value accent" id="s-rf">未测定</span>
+      </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="card">
+      <div class="card-title">练习记录（近 91 天）</div>
+      <div id="heatmap"></div>
+    </div>
+  </div>
+
+  <!-- Center Panel -->
+  <div id="panel-center">
+
+    <!-- Normal Breathing UI -->
+    <div id="breathing-ui" style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+      <div id="breath-wrap">
+        <div id="breath-circle"></div>
+        <div id="phase-label">准备</div>
+        <div id="phase-cd"></div>
+      </div>
+      <div style="text-align:center;">
+        <div id="timer-display">20:00</div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="session-prog"></div></div>
+      </div>
+      <div id="cycle-count">已完成 0 个呼吸周期</div>
+      <div id="rf-display">共振频率：— bpm</div>
+      <div class="controls">
+        <button class="btn btn-primary" id="btn-start">开始训练</button>
+        <button class="btn btn-secondary" id="btn-reset" style="display:none">重置</button>
+      </div>
+    </div>
+
+    <!-- RF Test Panel -->
+    <div id="rf-test-panel">
+      <div id="rf-test-intro">
+        <h3>共振频率探索测试</h3>
+        <p>我们将依次体验 5 种呼吸频率，每种 2.5 分钟。<br>每段结束后请根据感受评分，帮助找到最适合您的共振频率。</p>
+      </div>
+      <div class="rf-dots" id="rf-dots"></div>
+
+      <!-- Test breathing area -->
+      <div id="rf-test-breath-area">
+        <div id="rf-breath-wrap">
+          <div id="rf-circle"></div>
+          <div id="rf-phase-label">吸气</div>
+          <div id="rf-phase-cd"></div>
+        </div>
+        <div id="rf-test-timer">2:30</div>
+        <div id="rf-test-cur">当前：6.5 bpm</div>
+      </div>
+
+      <!-- Rating panel -->
+      <div id="rating-panel">
+        <h3 id="rating-title">请为 6.5 bpm 评分</h3>
+        <p>这个呼吸频率感觉如何？<br>5星 = 非常舒适自然，1星 = 非常勉强</p>
+        <div class="stars" id="stars">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+        </div>
+        <button class="btn btn-primary" id="btn-rate" disabled>提交评分</button>
+      </div>
+
+      <!-- Result panel -->
+      <div id="rf-result-panel">
+        <h3>测试完成！</h3>
+        <p id="rf-result-text"></p>
+        <div id="rf-opt-list" style="width:100%;display:flex;flex-direction:column;gap:7px;"></div>
+        <button class="btn btn-primary" id="btn-confirm-rf">确认，开始训练</button>
+      </div>
+
+      <div id="rf-test-controls">
+        <button class="btn btn-primary" id="btn-start-rf">开始测试</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Complete Overlay -->
+<div id="complete-overlay">
+  <div class="complete-card">
+    <h2>训练完成！</h2>
+    <p id="c-msg">太棒了！本次训练已完成。</p>
+    <div class="cstats" id="c-stats"></div>
+    <button class="btn btn-primary" id="btn-ok">好的</button>
+  </div>
+</div>
+
+<!-- Footer -->
+<div id="footer">
+  <div class="ref-label">参考文献</div>
+  <p>
+    Lehrer, P.M., Vaschillo, E., &amp; Vaschillo, B. (2000). Resonant frequency biofeedback training to increase cardiac variability. <em>Applied Psychophysiology and Biofeedback</em>, 25(3), 177–191. ·
+    Lehrer, P.M., et al. (2013). Protocol for Heart Rate Variability Biofeedback Training. <em>Biofeedback</em>, 41(3), 98–109. ·
+    Lehrer, P.M. &amp; Gevirtz, R. (2014). Heart rate variability biofeedback: how and why does it work? <em>Frontiers in Psychology</em>, 5, 756.
+  </p>
+</div>
+
+<script>
+// ============================================================
+// CONFIG
+// ============================================================
+const RFS = [6.5, 6.0, 5.5, 5.0, 4.5];
+
+const TIMING = {
+  6.5: { inhale: 3.69, exhale: 5.54 },
+  6.0: { inhale: 4.0,  exhale: 6.0  },
+  5.5: { inhale: 4.36, exhale: 6.55 },
+  5.0: { inhale: 4.8,  exhale: 7.2  },
+  4.5: { inhale: 5.33, exhale: 8.0  }
+};
+
+const SESSION_SECS = 20 * 60;
+const RF_TEST_SECS = 2.5 * 60;
+
+const SESSIONS = [
+  {
+    id: 1, rfTest: true, minimal: false,
+    title: '第一节：共振频率探索',
+    teaching: '<p>欢迎开始 HRV 呼吸训练！</p><p style="margin-top:8px">今天我们将探索您的个人<strong>共振频率</strong>——使心率变异性最大化的特定呼吸速率。每个人的共振频率略有不同，通常在 4.5–6.5 次/分钟之间。</p><p style="margin-top:8px">我们将依次体验 5 种频率，每种 2.5 分钟，请放松跟随圆圈呼吸，并在结束时评分。</p>',
+    tips: ['保持自然放松，不要强迫', '注意哪个频率感觉最舒适', '评分时诚实反映您的体验']
+  },
+  {
+    id: 2, rfTest: false, minimal: false,
+    title: '第二节：基础共振练习',
+    teaching: '<p>您已找到个人共振频率。现在开始系统性练习。</p><p style="margin-top:8px">以共振频率呼吸时，心脏跳动与呼吸节律趋于同步，形成<strong>心肺共振</strong>状态——HRV 在此刻达到峰值。</p><p style="margin-top:8px">本节重点：跟随圆圈节律，让呼吸自然流动。</p>',
+    tips: ['用鼻子吸气，嘴巴或鼻子呼气', '腹式呼吸，感受腹部起伏', '如分心，轻轻回到对圆圈的关注']
+  },
+  {
+    id: 3, rfTest: false, minimal: false,
+    title: '第三节：深化连贯性',
+    teaching: '<p>经过两次练习，您已开始适应共振频率呼吸。</p><p style="margin-top:8px">本节重点是<strong>呼吸的平滑性</strong>：吸气到呼气之间无停顿，形成连续正弦波般的呼吸流。</p><p style="margin-top:8px">这种连贯的呼吸能最大限度激活副交感神经，深度放松身体。</p>',
+    tips: ['吸气与呼气之间平滑过渡', '想象呼吸如同海浪，连绵不断', '放松肩膀和胸腔，让横膈膜主导']
+  },
+  {
+    id: 4, rfTest: false, minimal: false,
+    title: '第四节：身体觉察整合',
+    teaching: '<p>随着练习深入，开始将呼吸与身体感知整合。</p><p style="margin-top:8px">在跟随呼吸节律的同时，留意：<strong>心跳感</strong>（胸口或手指）、<strong>体温变化</strong>、<strong>肌肉放松程度</strong>。</p><p style="margin-top:8px">研究表明，带有身体觉察的 HRV 训练效果优于单纯呼吸练习。</p>',
+    tips: ['吸气时感受心跳加快', '呼气时感受心跳减缓', '这就是 HRV 在工作的直接感受']
+  },
+  {
+    id: 5, rfTest: false, minimal: false,
+    title: '第五节：延伸强化练习',
+    teaching: '<p>第5节标志着您进入训练中期阶段。</p><p style="margin-top:8px">研究显示，坚持 4–6 周 HRV 训练可显著改善：<strong>情绪调节能力</strong>、压力耐受性、注意力持续性和睡眠质量。</p><p style="margin-top:8px">本节继续巩固共振呼吸，同时尝试放松面部肌肉。</p>',
+    tips: ['面部放松从额头开始，向下扩展', '每次呼气时深化放松', '允许自己完全进入当下']
+  },
+  {
+    id: 6, rfTest: false, minimal: false,
+    title: '第六节：压力情境应用',
+    teaching: '<p>HRV 训练的核心价值在于实际应用。</p><p style="margin-top:8px">本节练习时，尝试温和地回想一个轻微压力情境（工作任务、对话），同时<strong>保持共振频率呼吸</strong>。这训练神经系统在压力下仍能维持平衡。</p>',
+    tips: ['选择轻度而非强烈的压力情境', '如感到不适立即回到中性专注', '练习结束后做3次深呼吸过渡']
+  },
+  {
+    id: 7, rfTest: false, minimal: false,
+    title: '第七节：表现优化',
+    teaching: '<p>进入高级阶段，将 HRV 与认知表现结合。</p><p style="margin-top:8px">在共振呼吸的基础上，尝试<strong>专注于一个积极意象</strong>或<strong>轻解一个简单问题</strong>，观察高 HRV 状态下思维的清晰度。</p><p style="margin-top:8px">心率连贯性高时，前额叶皮层功能增强，决策和创造力都会提升。</p>',
+    tips: ['保持呼吸节律优先', '轻柔地处理思维，不要过度投入', '结束后记录感受']
+  },
+  {
+    id: 8, rfTest: false, minimal: true,
+    title: '第八节：减少引导（一）',
+    teaching: '<p>您已掌握共振频率呼吸的基本技能。</p><p style="margin-top:8px">从本节开始，逐步<strong>减少视觉引导依赖</strong>。动画将变得更微弱，帮助您建立内在节律感——这是独立练习的关键能力。</p><p style="margin-top:8px">声音提示保留，视觉提示减弱。专注于内在身体感受。</p>',
+    tips: ['允许注意力向内转', '依靠声音提示保持节律', '感受身体内部的起伏节奏']
+  },
+  {
+    id: 9, rfTest: false, minimal: true,
+    title: '第九节：减少引导（二）',
+    teaching: '<p>继续强化内在节律感知。</p><p style="margin-top:8px">在音效辅助下，尝试<strong>闭眼练习</strong>部分时间。感受呼吸在身体内流动，不依赖外部视觉线索。</p><p style="margin-top:8px">能够闭眼保持准确节律，说明您的神经系统已开始内化这一模式。</p>',
+    tips: ['从睁眼开始，逐渐过渡到闭眼', '感受心跳与呼吸的自然协同', '不必担心节律是否精确']
+  },
+  {
+    id: 10, rfTest: false, minimal: true,
+    title: '第十节：独立练习',
+    teaching: '<p>恭喜完成完整训练计划！</p><p style="margin-top:8px">您已建立了 HRV 共振呼吸的能力。本节视觉引导最小化，这最接近<strong>日常自主练习</strong>的状态。</p><p style="margin-top:8px">建议：每天练习 1–2 次，每次 20 分钟，在压力时刻尤其有效。</p>',
+    tips: ['您已有能力独立练习', '保持每日练习习惯最重要', '压力情境前练习5分钟效果最佳']
+  }
+];
+
+// ============================================================
+// STATE
+// ============================================================
+const S = {
+  sid: 1,          // current session id
+  rf: 6.0,         // resonant frequency
+  running: false,
+  phase: 'idle',   // 'idle'|'inhale'|'exhale'
+  phaseStart: 0,
+  phaseDur: 0,
+  sessStart: 0,
+  elapsed: 0,
+  cycles: 0,
+  rafId: null,
+  warned: false,
+  // audio
+  audioCtx: null,
+  audioOk: false,
+  // RF test
+  testPhase: 'idle',  // 'idle'|'running'|'rating'|'done'
+  testIdx: 0,
+  testStart: 0,
+  testPhaseStart: 0,
+  testPhaseDur: 0,
+  testBreathPhase: 'inhale',
+  testRafId: null,
+  ratings: {},
+  curRating: 0
+};
+
+// ============================================================
+// STORAGE
+// ============================================================
+const DB = {
+  SK: 'hrv_settings',
+  LK: 'hrv_log',
+  settings() {
+    try { return JSON.parse(localStorage.getItem(this.SK)) || {}; }
+    catch { return {}; }
+  },
+  saveSettings(d) {
+    try { localStorage.setItem(this.SK, JSON.stringify(d)); } catch {}
+  },
+  log() {
+    try { return JSON.parse(localStorage.getItem(this.LK)) || []; }
+    catch { return []; }
+  },
+  addLog(e) {
+    try {
+      const l = this.log(); l.push(e);
+      localStorage.setItem(this.LK, JSON.stringify(l));
+    } catch {}
+  },
+  todayCount() {
+    const t = today();
+    return this.log().filter(e => e.date === t).length;
+  },
+  weekCount() {
+    const cut = Date.now() - 7 * 86400000;
+    return this.log().filter(e => new Date(e.date).getTime() >= cut).length;
+  },
+  totalMins() {
+    return Math.round(this.log().reduce((a, e) => a + (e.duration || 0), 0) / 60);
+  }
+};
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
+// ============================================================
+// AUDIO
+// ============================================================
+const AUDIO = {
+  init() {
+    if (S.audioOk) return;
+    try {
+      S.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      S.audioOk = true;
+    } catch {}
+  },
+  tone(freq, vol = 0.12) {
+    if (!S.audioCtx) return;
+    try {
+      const ctx = S.audioCtx;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g); g.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'sine';
+      const now = ctx.currentTime;
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(vol, now + 0.06);
+      g.gain.linearRampToValueAtTime(0, now + 0.3);
+      osc.start(now); osc.stop(now + 0.35);
+    } catch {}
+  },
+  inhale() { this.tone(440, 0.12); },
+  exhale() { this.tone(330, 0.10); }
+};
+
+// ============================================================
+// BREATHING ENGINE
+// ============================================================
+function eio(t) { return -(Math.cos(Math.PI * t) - 1) / 2; }  // ease in-out sine
+
+const ENG = {
+  circle: null, label: null, cd: null,
+
+  init() {
+    this.circle = document.getElementById('breath-circle');
+    this.label  = document.getElementById('phase-label');
+    this.cd     = document.getElementById('phase-cd');
+  },
+
+  start() {
+    S.running = true;
+    S.cycles = 0;
+    S.elapsed = 0;
+    S.warned = false;
+    S.sessStart = performance.now();
+    this._beginPhase('inhale', performance.now());
+    AUDIO.inhale();
+    S.rafId = requestAnimationFrame(ts => this._loop(ts));
+  },
+
+  _beginPhase(ph, ts) {
+    S.phase = ph;
+    S.phaseStart = ts;
+    const t = TIMING[S.rf] || TIMING[6.0];
+    S.phaseDur = (ph === 'inhale' ? t.inhale : t.exhale) * 1000;
+  },
+
+  _loop(ts) {
+    if (!S.running) return;
+    S.elapsed = (ts - S.sessStart) / 1000;
+
+    if (S.elapsed >= SESSION_SECS) { this._complete(); return; }
+
+    // Hyperventilation warning once after 5 min for fast RF
+    if (!S.warned && S.rf >= 6.0 && S.elapsed > 300) {
+      S.warned = true;
+      const wb = document.getElementById('warning-banner');
+      wb.style.display = 'block';
+      setTimeout(() => { wb.style.display = 'none'; }, 5000);
+    }
+
+    const prog = Math.min((ts - S.phaseStart) / S.phaseDur, 1);
+    const e = eio(prog);
+
+    if (S.phase === 'inhale') {
+      const sc = 0.7 + 0.3 * e;
+      const sz = 8 + 48 * e, op = 0.08 + 0.28 * e;
+      this.circle.style.transform = `scale(${sc})`;
+      this.circle.style.boxShadow = `0 0 ${sz}px ${sz/3}px rgba(123,163,168,${op})`;
+      this.label.textContent = '吸气';
+    } else {
+      const sc = 1.0 - 0.3 * e;
+      const sz = 56 - 48 * e, op = 0.36 - 0.28 * e;
+      this.circle.style.transform = `scale(${sc})`;
+      this.circle.style.boxShadow = `0 0 ${sz}px ${sz/3}px rgba(123,163,168,${op})`;
+      this.label.textContent = '呼气';
+    }
+
+    const rem = (S.phaseDur - (ts - S.phaseStart)) / 1000;
+    this.cd.textContent = rem > 0 ? rem.toFixed(1) + 's' : '';
+
+    if (prog >= 1) {
+      if (S.phase === 'inhale') { this._beginPhase('exhale', ts); AUDIO.exhale(); }
+      else {
+        this._beginPhase('inhale', ts); S.cycles++;
+        document.getElementById('cycle-count').textContent = `已完成 ${S.cycles} 个呼吸周期`;
+        AUDIO.inhale();
+      }
+    }
+
+    // Update HUD
+    const rem2 = Math.max(0, SESSION_SECS - S.elapsed);
+    const m = Math.floor(rem2 / 60), sec = Math.floor(rem2 % 60);
+    document.getElementById('timer-display').textContent =
+      `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    document.getElementById('session-prog').style.width =
+      `${(S.elapsed / SESSION_SECS) * 100}%`;
+
+    S.rafId = requestAnimationFrame(ts => this._loop(ts));
+  },
+
+  stop() {
+    S.running = false;
+    if (S.rafId) { cancelAnimationFrame(S.rafId); S.rafId = null; }
+    if (this.circle) {
+      this.circle.style.transform = 'scale(0.7)';
+      this.circle.style.boxShadow = 'none';
+    }
+    if (this.label) this.label.textContent = '准备';
+    if (this.cd) this.cd.textContent = '';
+  },
+
+  _complete() {
+    this.stop();
+    const dur = Math.round(S.elapsed);
+    DB.addLog({ date: today(), session: S.sid, duration: dur, cycles: S.cycles, rf: S.rf });
+
+    // Advance currentSession
+    const cfg = DB.settings();
+    if (S.sid >= (cfg.currentSession || 1)) {
+      cfg.currentSession = Math.min(10, S.sid + 1);
+      DB.saveSettings(cfg);
+    }
+
+    const m = Math.floor(dur / 60), sec = dur % 60;
+    document.getElementById('c-msg').textContent =
+      `太棒了！您完成了第 ${S.sid} 节训练。持续规律练习，心率变异性将逐步提升。`;
+    document.getElementById('c-stats').textContent =
+      `时长：${m}分${sec}秒 · 呼吸周期：${S.cycles} 次 · 频率：${S.rf} bpm`;
+    document.getElementById('complete-overlay').style.display = 'flex';
+
+    PROGRESS.render();
+    UI.updateStats();
+  }
+};
+
+// ============================================================
+// RF_TEST
+// ============================================================
+const RF_TEST = {
+  circle: null, lbl: null, cd: null,
+
+  init() {
+    this.circle = document.getElementById('rf-circle');
+    this.lbl    = document.getElementById('rf-phase-label');
+    this.cd     = document.getElementById('rf-phase-cd');
+
+    // Stars
+    const stars = document.querySelectorAll('.star');
+    stars.forEach(star => {
+      star.addEventListener('mouseover', () => {
+        const v = +star.dataset.v;
+        stars.forEach(s => s.classList.toggle('lit', +s.dataset.v <= v));
+      });
+      star.addEventListener('mouseout', () => {
+        stars.forEach(s => s.classList.toggle('lit', +s.dataset.v <= S.curRating));
+      });
+      star.addEventListener('click', () => {
+        S.curRating = +star.dataset.v;
+        stars.forEach(s => s.classList.toggle('lit', +s.dataset.v <= S.curRating));
+        document.getElementById('btn-rate').disabled = false;
+      });
+    });
+
+    document.getElementById('btn-start-rf').addEventListener('click', () => this.startTest());
+    document.getElementById('btn-rate').addEventListener('click', () => this.submitRating());
+    document.getElementById('btn-confirm-rf').addEventListener('click', () => this.confirmRF());
+  },
+
+  _dots() {
+    const el = document.getElementById('rf-dots');
+    el.innerHTML = '';
+    RFS.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'rf-dot' + (i < S.testIdx ? ' done' : i === S.testIdx ? ' active' : '');
+      el.appendChild(d);
+    });
+  },
+
+  startTest() {
+    S.testIdx = 0; S.ratings = {};
+    document.getElementById('btn-start-rf').style.display = 'none';
+    document.getElementById('rf-test-breath-area').style.display = 'flex';
+    this._nextRF();
+  },
+
+  _nextRF() {
+    if (S.testIdx >= RFS.length) { this._showResults(); return; }
+    const rf = RFS[S.testIdx];
+    S.rf = rf; this._dots();
+    document.getElementById('rf-test-cur').textContent = `当前：${rf} bpm`;
+    document.getElementById('rating-panel').style.display = 'none';
+    document.getElementById('rf-test-breath-area').style.display = 'flex';
+
+    const t = TIMING[rf];
+    S.testStart = performance.now();
+    S.testBreathPhase = 'inhale';
+    S.testPhaseStart = performance.now();
+    S.testPhaseDur = t.inhale * 1000;
+    if (this.lbl) this.lbl.textContent = '吸气';
+    AUDIO.inhale();
+
+    if (S.testRafId) cancelAnimationFrame(S.testRafId);
+    S.testRafId = requestAnimationFrame(ts => this._testLoop(ts));
+  },
+
+  _testLoop(ts) {
+    const elapsed = (ts - S.testStart) / 1000;
+    const rem = Math.max(0, RF_TEST_SECS - elapsed);
+    const m = Math.floor(rem / 60), sec = Math.floor(rem % 60);
+    document.getElementById('rf-test-timer').textContent =
+      `${m}:${String(sec).padStart(2,'0')}`;
+
+    const prog = Math.min((ts - S.testPhaseStart) / S.testPhaseDur, 1);
+    const e = eio(prog);
+    const rf = RFS[S.testIdx];
+    const t = TIMING[rf];
+
+    if (S.testBreathPhase === 'inhale') {
+      const sc = 0.7 + 0.3 * e, sz = 8 + 48 * e, op = 0.08 + 0.28 * e;
+      this.circle.style.transform = `scale(${sc})`;
+      this.circle.style.boxShadow = `0 0 ${sz}px ${sz/3}px rgba(123,163,168,${op})`;
+      if (this.lbl) this.lbl.textContent = '吸气';
+    } else {
+      const sc = 1.0 - 0.3 * e, sz = 56 - 48 * e, op = 0.36 - 0.28 * e;
+      this.circle.style.transform = `scale(${sc})`;
+      this.circle.style.boxShadow = `0 0 ${sz}px ${sz/3}px rgba(123,163,168,${op})`;
+      if (this.lbl) this.lbl.textContent = '呼气';
+    }
+    const cdRem = (S.testPhaseDur - (ts - S.testPhaseStart)) / 1000;
+    if (this.cd) this.cd.textContent = cdRem > 0 ? cdRem.toFixed(1) + 's' : '';
+
+    if (prog >= 1) {
+      if (S.testBreathPhase === 'inhale') {
+        S.testBreathPhase = 'exhale';
+        S.testPhaseStart = ts; S.testPhaseDur = t.exhale * 1000;
+        AUDIO.exhale();
+      } else {
+        S.testBreathPhase = 'inhale';
+        S.testPhaseStart = ts; S.testPhaseDur = t.inhale * 1000;
+        AUDIO.inhale();
+      }
+    }
+
+    if (elapsed >= RF_TEST_SECS) {
+      cancelAnimationFrame(S.testRafId); S.testRafId = null;
+      this._showRating();
+    } else {
+      S.testRafId = requestAnimationFrame(ts => this._testLoop(ts));
+    }
+  },
+
+  _showRating() {
+    document.getElementById('rf-test-breath-area').style.display = 'none';
+    document.getElementById('rating-panel').style.display = 'flex';
+    const rf = RFS[S.testIdx];
+    document.getElementById('rating-title').textContent = `请为 ${rf} bpm 评分`;
+    S.curRating = 0;
+    document.querySelectorAll('.star').forEach(s => s.classList.remove('lit'));
+    document.getElementById('btn-rate').disabled = true;
+  },
+
+  submitRating() {
+    S.ratings[RFS[S.testIdx]] = S.curRating;
+    S.testIdx++;
+    document.getElementById('rating-panel').style.display = 'none';
+    if (S.testIdx < RFS.length) {
+      document.getElementById('rf-test-breath-area').style.display = 'flex';
+      this._nextRF();
+    } else {
+      this._showResults();
+    }
+  },
+
+  _showResults() {
+    document.getElementById('rf-test-breath-area').style.display = 'none';
+    document.getElementById('rating-panel').style.display = 'none';
+    document.getElementById('rf-test-controls').style.display = 'none';
+
+    // Best RF = highest rating (tie-break: prefer middle ~5.5)
+    let best = 6.0, bestScore = -1;
+    RFS.forEach(rf => {
+      const sc = S.ratings[rf] || 0;
+      if (sc > bestScore || (sc === bestScore && Math.abs(rf - 5.5) < Math.abs(best - 5.5))) {
+        bestScore = sc; best = rf;
+      }
+    });
+    S.rf = best;
+
+    document.getElementById('rf-result-text').textContent =
+      `根据评分，推荐共振频率为 ${best} bpm（${(60/best).toFixed(1)} 秒/周期）。您也可以手动选择其他频率。`;
+
+    const list = document.getElementById('rf-opt-list');
+    list.innerHTML = '';
+    RFS.forEach(rf => {
+      const div = document.createElement('div');
+      div.className = 'rf-opt' + (rf === best ? ' chosen' : '');
+      div.dataset.rf = rf;
+      const rating = S.ratings[rf] || 0;
+      const starsHtml = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+      div.innerHTML = `
+        <span class="rf-opt-label">${rf} bpm</span>
+        <span class="rf-opt-period">${(60/rf).toFixed(1)}s 周期</span>
+        <span class="rf-opt-stars">${starsHtml}</span>
+        ${rf === best ? '<span class="rf-opt-badge">推荐</span>' : ''}
+      `;
+      div.addEventListener('click', () => {
+        document.querySelectorAll('.rf-opt').forEach(o => o.classList.remove('chosen'));
+        div.classList.add('chosen');
+        S.rf = parseFloat(div.dataset.rf);
+      });
+      list.appendChild(div);
+    });
+
+    this._dots();
+    document.getElementById('rf-result-panel').style.display = 'flex';
+  },
+
+  confirmRF() {
+    const chosen = document.querySelector('.rf-opt.chosen');
+    if (chosen) S.rf = parseFloat(chosen.dataset.rf);
+
+    const cfg = DB.settings();
+    cfg.resonantFrequency = S.rf;
+    cfg.rfRatings = S.ratings;
+    cfg.currentSession = 2;
+    DB.saveSettings(cfg);
+
+    DB.addLog({
+      date: today(), session: 1,
+      duration: Math.round(RFS.length * RF_TEST_SECS),
+      cycles: 0, rf: S.rf
+    });
+
+    document.getElementById('s-rf').textContent = `${S.rf} bpm`;
+
+    // Switch to session 2
+    const sel = document.getElementById('session-sel');
+    sel.value = '2';
+    UI.switchSession(2);
+    PROGRESS.render();
+    UI.updateStats();
+  }
+};
+
+// ============================================================
+// PROGRESS
+// ============================================================
+const PROGRESS = {
+  render() { this._heatmap(); UI.updateStats(); },
+
+  _heatmap() {
+    const log = DB.log();
+    const countMap = {};
+    log.forEach(e => { countMap[e.date] = (countMap[e.date] || 0) + 1; });
+
+    const hm = document.getElementById('heatmap');
+    hm.innerHTML = '';
+
+    const now = new Date(); now.setHours(0,0,0,0);
+    // Start from the Sunday on or before (now - 90 days)
+    const start = new Date(now.getTime() - 90 * 86400000);
+    start.setDate(start.getDate() - start.getDay()); // back to Sunday
+    // End on Saturday on or after today
+    const end = new Date(now.getTime());
+    end.setDate(end.getDate() + (6 - end.getDay())); // forward to Saturday
+
+    const d = new Date(start);
+    while (d <= end) {
+      const ds = d.toISOString().slice(0,10);
+      const inRange = d >= new Date(now.getTime() - 90*86400000) && d <= now;
+      const cell = document.createElement('div');
+      cell.className = 'hm-cell';
+
+      if (!inRange) {
+        cell.style.visibility = 'hidden';
+      } else {
+        const cnt = countMap[ds] || 0;
+        cell.dataset.c = cnt >= 3 ? '3' : cnt >= 2 ? '2' : cnt >= 1 ? '1' : '0';
+        const tip = document.createElement('div');
+        tip.className = 'hm-tip';
+        tip.textContent = cnt > 0 ? `${ds}（${cnt}次）` : ds;
+        cell.appendChild(tip);
+      }
+      hm.appendChild(cell);
+      d.setDate(d.getDate() + 1);
+    }
+  }
+};
+
+// ============================================================
+// UI
+// ============================================================
+const UI = {
+  init() {
+    // Build session selector
+    const sel = document.getElementById('session-sel');
+    SESSIONS.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id;
+      o.textContent = `第${s.id}节：${s.title.replace(/^第\S+节：/, '')}`;
+      sel.appendChild(o);
+    });
+
+    // Load saved state
+    const cfg = DB.settings();
+    S.rf = cfg.resonantFrequency || 6.0;
+    const curSess = cfg.currentSession || 1;
+    sel.value = curSess;
+    this.switchSession(curSess);
+
+    sel.addEventListener('change', () => this.switchSession(+sel.value));
+
+    // Start
+    document.getElementById('btn-start').addEventListener('click', () => {
+      AUDIO.init();
+      ENG.start();
+      document.getElementById('btn-start').style.display = 'none';
+      document.getElementById('btn-reset').style.display = '';
+      document.getElementById('rf-display').textContent = `共振频率：${S.rf} bpm`;
+    });
+
+    // Reset
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      ENG.stop();
+      S.cycles = 0; S.elapsed = 0;
+      document.getElementById('timer-display').textContent = '20:00';
+      document.getElementById('session-prog').style.width = '0%';
+      document.getElementById('cycle-count').textContent = '已完成 0 个呼吸周期';
+      document.getElementById('btn-start').style.display = '';
+      document.getElementById('btn-reset').style.display = 'none';
+    });
+
+    // Complete overlay OK
+    document.getElementById('btn-ok').addEventListener('click', () => {
+      document.getElementById('complete-overlay').style.display = 'none';
+      document.getElementById('btn-start').style.display = '';
+      document.getElementById('btn-reset').style.display = 'none';
+      document.getElementById('timer-display').textContent = '20:00';
+      document.getElementById('session-prog').style.width = '0%';
+      document.getElementById('cycle-count').textContent = '已完成 0 个呼吸周期';
+    });
+
+    RF_TEST.init();
+  },
+
+  switchSession(id) {
+    S.sid = id;
+    const sess = SESSIONS.find(s => s.id === id);
+    if (!sess) return;
+
+    // Stop anything running
+    ENG.stop();
+    if (S.testRafId) { cancelAnimationFrame(S.testRafId); S.testRafId = null; }
+
+    // Teaching card
+    document.getElementById('session-title').textContent = sess.title;
+    document.getElementById('teaching-content').innerHTML = sess.teaching;
+    const ul = document.getElementById('teaching-tips');
+    ul.innerHTML = '';
+    sess.tips.forEach(t => {
+      const li = document.createElement('li');
+      li.textContent = t;
+      ul.appendChild(li);
+    });
+
+    // Panel visibility
+    const bui = document.getElementById('breathing-ui');
+    const rtp = document.getElementById('rf-test-panel');
+
+    if (sess.rfTest) {
+      bui.style.display = 'none';
+      rtp.style.display = 'flex';
+      // Reset RF test UI
+      document.getElementById('btn-start-rf').style.display = '';
+      document.getElementById('rf-test-breath-area').style.display = 'none';
+      document.getElementById('rating-panel').style.display = 'none';
+      document.getElementById('rf-result-panel').style.display = 'none';
+      document.getElementById('rf-test-controls').style.display = 'flex';
+      RF_TEST._dots();
+    } else {
+      bui.style.display = 'flex';
+      rtp.style.display = 'none';
+
+      const pc = document.getElementById('panel-center');
+      if (sess.minimal) pc.classList.add('minimal');
+      else pc.classList.remove('minimal');
+
+      const cfg = DB.settings();
+      S.rf = cfg.resonantFrequency || 6.0;
+      document.getElementById('rf-display').textContent = `共振频率：${S.rf} bpm`;
+    }
+
+    // Reset controls
+    document.getElementById('btn-start').style.display = '';
+    document.getElementById('btn-reset').style.display = 'none';
+    document.getElementById('timer-display').textContent = '20:00';
+    document.getElementById('session-prog').style.width = '0%';
+    document.getElementById('cycle-count').textContent = '已完成 0 个呼吸周期';
+    document.getElementById('phase-label').textContent = '准备';
+    document.getElementById('phase-cd').textContent = '';
+  },
+
+  updateStats() {
+    const cfg = DB.settings();
+    const rf = cfg.resonantFrequency;
+    const cur = cfg.currentSession || 1;
+
+    document.getElementById('s-week').textContent = `${DB.weekCount()} / 14`;
+    document.getElementById('s-today').textContent = `${Math.max(0, 2 - DB.todayCount())} 次`;
+    document.getElementById('s-total').textContent = `${DB.totalMins()} 分钟`;
+    document.getElementById('s-current').textContent =
+      `第 ${Math.ceil(cur/2)} 周 第 ${((cur-1)%2)+1} 次`;
+    document.getElementById('s-rf').textContent = rf ? `${rf} bpm` : '未测定';
+  }
+};
+
+// ============================================================
+// INIT
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  ENG.init();
+  UI.init();
+  PROGRESS.render();
+});
+</script>
+</body>
+</html>
